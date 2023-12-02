@@ -34,12 +34,17 @@ int main(int argc, char *argv[])
 
     
     double *r = (double *)malloc(aMatrix.num_cols * sizeof(double));
+    compute_residual(aMatrix, bMatrix, xMatrix, r);
     spmv_csr(&aMatrix, xMatrix, r);
+    double norm = compute_norm(r, aMatrix.num_cols);
+    printf("Norm: %lf\n", norm);
     // <The rest of your code goes here>
     free(bMatrix);
     free(xMatrix);
     free(r);
-    
+
+    free_csr_matrix(&aMatrix);
+
     printf("\nDone!\n");
     return 0;
 }

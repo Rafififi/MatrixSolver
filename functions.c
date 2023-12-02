@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "functions.h"
 
 
@@ -19,13 +20,11 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     // Read the number of rows, columns and non-zero elements
     fscanf(fileName, "%d %d %d", &aMatrix->num_rows, &aMatrix->num_cols, &aMatrix->num_non_zeros);
     
-    int *rows;
-    int *cols;
-    double *data;
+    
 
-    rows = (int *)calloc(aMatrix->num_non_zeros, sizeof(int));
-    cols = (int *)calloc(aMatrix->num_non_zeros,  sizeof(int));
-    data = (double *)calloc(aMatrix->num_non_zeros,  sizeof(double));
+    int *rows = (int *)calloc(aMatrix->num_non_zeros, sizeof(int));
+    int *cols = (int *)calloc(aMatrix->num_non_zeros,  sizeof(int));
+    double *data = (double *)calloc(aMatrix->num_non_zeros,  sizeof(double));
     for (int i = 0; i<aMatrix->num_non_zeros; i++)
     {
         fscanf(fileName, "%d %d %lf", &rows[i], &cols[i], &data[i]);
@@ -33,14 +32,11 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     }
     printf("\n");
 
-
     aMatrix->row_ptr = (int *)calloc(aMatrix->num_rows, sizeof(int));
     aMatrix->csr_data = (double *)calloc(aMatrix->num_non_zeros, sizeof(double));
     aMatrix->col_ind = (int *)calloc(aMatrix->num_cols, sizeof(int));
 
     //sort the rows and apply the same permutation to cols and data then sort cols making sure that the data and rows are sorted with it and then cols are sorted with the rows and data
-
-    //sort the rows
     for (int i = 0; i < aMatrix->num_non_zeros; i++)
     {
         for (int j = i+1; j < aMatrix->num_non_zeros; j++)
@@ -124,6 +120,7 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     free(rows);
     free(cols);
     free(data);
+    
     fclose(fileName);
 
 }
@@ -145,7 +142,50 @@ void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
     {
         printf(" %lf", y[i]);
     }
+    printf("\n");
+
+    free(product);
 }
 
+void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x, double *r)
+{
+    double *product = (double *)calloc(AMatrix.num_non_zeros, sizeof(double));
+    spmv_csr(&AMatrix, x, product);
 
+    for (int i = 0; i < AMatrix.num_rows; i++)
+    {
+        r[i] = product[i] - b[i];
+    }
+    printf("Residual:");
+    for (int i = 0; i < AMatrix.num_rows; i++)
+    {
+        printf(" %lf", r[i]);
+    }
+    free(product);
 
+}
+
+double compute_norm(const double *r, int n)
+{
+    double norm = 0;
+    for (int i = 0; i < n; i++)
+    {
+        norm += r[i] * r[i];
+    }
+    norm = sqrt(norm);
+    return norm;
+
+}
+
+void free_csr_matrix(CSRMatrix *aMatrix)
+{
+    free(aMatrix->row_ptr);
+    free(aMatrix->col_ind);
+    aMatrix->row_ptr = NULL;
+    aMatrix->col_ind = NULL;
+    aMatrix->csr_data = NULL;
+    free(aMatrix->csr_data);
+    aMatrix->num_rows = 0;
+    aMatrix->num_cols = 0;
+    aMatrix->num_non_zeros = 0;
+}

@@ -35,4 +35,5 @@ void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x,
 */
 double compute_norm(const double *r, int n);
 
+void free_csr_matrix(CSRMatrix *aMatrix);
 #endif
