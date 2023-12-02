@@ -130,23 +130,21 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 
 void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
 {
-    double product = 0;
+    double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
     for (int row = 0; row < AMatrix->num_rows; row++)
     {
-        product = 0;
-        for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row+1]; j++)
+
+        for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row + 1]; j++)
         {
-            product = AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
-            y[row] += product;
+            product[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
         }
-    }   
-
-
+        y[row] = product[row];
+    }
+    printf("Product:");
     for (int i = 0; i < AMatrix->num_rows; i++)
     {
-        printf("y[%d]: %lf\n", i, y[i]);
+        printf(" %lf", y[i]);
     }
-
 }
 
 
