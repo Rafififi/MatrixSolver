@@ -33,8 +33,8 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     printf("\n");
 
     aMatrix->row_ptr = (int *)calloc(aMatrix->num_rows, sizeof(int));
-    aMatrix->csr_data = (double *)calloc(aMatrix->num_non_zeros, sizeof(double));
     aMatrix->col_ind = (int *)calloc(aMatrix->num_cols, sizeof(int));
+    aMatrix->csr_data = (double *)calloc(aMatrix->num_non_zeros, sizeof(double));
 
     //sort the rows and apply the same permutation to cols and data then sort cols making sure that the data and rows are sorted with it and then cols are sorted with the rows and data
     for (int i = 0; i < aMatrix->num_non_zeros; i++)
@@ -183,9 +183,8 @@ void free_csr_matrix(CSRMatrix *aMatrix)
     free(aMatrix->col_ind);
     aMatrix->row_ptr = NULL;
     aMatrix->col_ind = NULL;
-    aMatrix->csr_data = NULL;
-    free(aMatrix->csr_data);
     aMatrix->num_rows = 0;
     aMatrix->num_cols = 0;
     aMatrix->num_non_zeros = 0;
+
 }
