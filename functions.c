@@ -30,92 +30,43 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
         fscanf(fileName, "%d %d %lf", &rows[i], &cols[i], &data[i]);
         c = getc(fileName);
     }
-    printf("\n");
 
-    aMatrix->row_ptr = (int *)calloc(aMatrix->num_rows, sizeof(int));
-    aMatrix->col_ind = (int *)calloc(aMatrix->num_cols, sizeof(int));
+
+    printf("Numbers have been read\n");
+
+
+    aMatrix->row_ptr = (int *)calloc((aMatrix->num_rows + 1), sizeof(int));
+    aMatrix->col_ind = (int *)calloc(aMatrix->num_non_zeros, sizeof(int));
     aMatrix->csr_data = (double *)calloc(aMatrix->num_non_zeros, sizeof(double));
 
-    //sort the rows and apply the same permutation to cols and data then sort cols making sure that the data and rows are sorted with it and then cols are sorted with the rows and data
-    for (int i = 0; i < aMatrix->num_non_zeros; i++)
+    int value = 0;
+    int col = 0;
+    for (int row = 0; row <= aMatrix->num_rows; row++)
     {
-        for (int j = i+1; j < aMatrix->num_non_zeros; j++)
+        for (int i = 0; i < aMatrix->num_non_zeros; i++)
         {
-            if (rows[i] > rows[j])
+            if (rows[i] == row)
             {
-                int temp = rows[i];
-                rows[i] = rows[j];
-                rows[j] = temp;
-
-                int temp2 = cols[i];
-                cols[i] = cols[j];
-                cols[j] = temp2;
-
-                double temp3 = data[i];
-                data[i] = data[j];
-                data[j] = temp3;
-            }
-
-            if (rows[i] == rows[j])
-            {
-                if (cols[i] > cols[j])
-                {
-                    int temp = cols[i];
-                    cols[i] = cols[j];
-                    cols[j] = temp;
-
-                    double temp2 = data[i];
-                    data[i] = data[j];
-                    data[j] = temp2;
-                }
+                value++;
+                aMatrix->row_ptr[row] = value;
+                aMatrix->col_ind[col] = cols[i] - 1;
+                aMatrix->csr_data[col] = data[i];
+                col++;
             }
         }
-    }    
+    }
 
-    //count how many values there are in each row and store it in row_ptr
-    // all the values in row_ptr need to be equal to that number and the numbers before it added together
-    int count = 0;
-    int row = 0;
-    for (int i = 0; i <= aMatrix->num_non_zeros; i++)
-    {
-        if (rows[i] == row)
-        {
-            count++;
-
-        }
-        else
-        {
-            aMatrix->row_ptr[row] = count;
-            count++;
-            row++;
-        }
-        double temp1 = data[i];
-        aMatrix->csr_data[i] = temp1;
-
-        int temp2 = cols[i];
-        aMatrix->col_ind[i] = temp2 - 1;
-    }    
-
-    printf("Number of non-zero elements: %d\n", aMatrix->num_non_zeros);
-    printf("Row Pointer:");
     for (int i = 0; i <= aMatrix->num_rows; i++)
     {
-        printf(" %d", aMatrix->row_ptr[i]);
+        printf("%d ", aMatrix->row_ptr[i]);
     }
-
     printf("\n");
-    printf("Coloumn Index:");
     for (int i = 0; i < aMatrix->num_non_zeros; i++)
     {
-        printf(" %d", aMatrix->col_ind[i]);
+        printf("col index: %d ", aMatrix->col_ind[i]);
+        printf("csr Data: %lf ", aMatrix->csr_data[i]);
+        printf("\n");
     }
-    printf("\n");
-    printf("Values:");
-    for (int i = 0; i < aMatrix->num_non_zeros; i++)
-    {
-        printf(" %lf", aMatrix->csr_data[i]);
-    }
-    printf("\n");
     
     free(rows);
     free(cols);
@@ -124,6 +75,54 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     fclose(fileName);
 
 }
+
+void solver(const CSRMatrix AMatrix, double *b, double *x)
+{
+    int n = AMatrix.num_rows;
+    double *x_new = malloc(n * sizeof(double));
+    double tol = 1e-6;
+    int max_iter = 1000;
+
+    for (int i = 0; i < n; i++)
+    {
+        x_new[i] = x[i];
+    }
+
+    for (int iter = 0; iter < max_iter; iter++)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            double sum = 0.0;
+            for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
+            {
+                if (AMatrix.col_ind[j] != i)
+                {
+                    sum += AMatrix.csr_data[j] * x[AMatrix.col_ind[j]];
+                }
+            }
+            x_new[i] = (b[i] - sum) / AMatrix.csr_data[AMatrix.row_ptr[i] + i];
+        }
+
+        double error = 0.0;
+        for (int i = 0; i < n; i++)
+        {
+            error += fabs(x_new[i] - x[i]);
+        }
+
+        if (error < tol)
+        {
+            break;
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            x[i] = x_new[i];
+        }
+    }
+
+    free(x_new);
+}
+
 
 void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
 {
@@ -137,14 +136,10 @@ void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
         }
         y[row] = product[row];
     }
-    printf("Product:");
-    for (int i = 0; i < AMatrix->num_rows; i++)
-    {
-        printf(" %lf", y[i]);
-    }
-    printf("\n");
+    
 
     free(product);
+    printf("spmv done\n");
 }
 
 void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x, double *r)
@@ -156,12 +151,9 @@ void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x,
     {
         r[i] = product[i] - b[i];
     }
-    printf("Residual:");
-    for (int i = 0; i < AMatrix.num_rows; i++)
-    {
-        printf(" %lf", r[i]);
-    }
+    
     free(product);
+    printf("residual done\n");
 
 }
 
@@ -173,6 +165,7 @@ double compute_norm(const double *r, int n)
         norm += r[i] * r[i];
     }
     norm = sqrt(norm);
+    printf("norm done\n");
     return norm;
 
 }
@@ -181,10 +174,12 @@ void free_csr_matrix(CSRMatrix *aMatrix)
 {
     free(aMatrix->row_ptr);
     free(aMatrix->col_ind);
+    free(aMatrix->csr_data);
     aMatrix->row_ptr = NULL;
     aMatrix->col_ind = NULL;
+    aMatrix->csr_data = NULL;
     aMatrix->num_rows = 0;
     aMatrix->num_cols = 0;
     aMatrix->num_non_zeros = 0;
-
+    printf("free done\n");
 }
