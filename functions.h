@@ -14,7 +14,7 @@ typedef struct {
 
 
 void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix);
-void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y);
+void spmvCSR(const CSRMatrix *AMatrix, const double *x, double *y);
 
 typedef struct
 {
@@ -35,15 +35,17 @@ void solver(const CSRMatrix AMatrix, double *b, double *x);
 This shows how much x values you found are accurate, but 
 printing the whole vector r might not be a good idea. So
 */
-void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x, double *r);
+void computeResidual(const CSRMatrix AMatrix, const double *b, const double *x, double *r);
 /*
 3. A function called compute_norm to compute the norm of vector residual
 */
-double compute_norm(const double *r, int n);
+double computeNorm(const double *r, int n);
 
-void free_csr_matrix(CSRMatrix *aMatrix);
+void freeCSRMatrix(CSRMatrix *aMatrix);
 
 int compare(const void *a, const void *b); //this is for qsort
 
 int triangularcheck(const CSRMatrix AMatrix);
+
+void CSRTranspose(CSRMatrix *aMatrix);
 #endif

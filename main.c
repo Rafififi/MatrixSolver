@@ -43,6 +43,9 @@ int main(int argc, char *argv[])
         xMatrix[i] = 1.0;
     }
 
+
+   
+
     //solver(aMatrix, bMatrix, xMatrix);
     puts("Solver finished");
     double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
@@ -52,11 +55,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    compute_residual(aMatrix, bMatrix, xMatrix, residual);
-    double norm = compute_norm(residual, aMatrix.num_cols);
-    printf(" \nNorm: %lf\n", norm);
+    computeResidual(aMatrix, bMatrix, xMatrix, residual);
+    double norm = computeNorm(residual, aMatrix.num_cols);
+    printf(" \nNorm: %e\n", norm);
     // <The rest of your code goes here>
-    free_csr_matrix(&aMatrix);
+    freeCSRMatrix(&aMatrix);
 
     free(bMatrix);
     free(xMatrix);
