@@ -16,6 +16,12 @@ typedef struct {
 void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix);
 void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y);
 
+typedef struct
+{
+    int row;
+    int col;
+    double data;
+} MatrixElement;
 // ###########################################################
 /* <Here you can add the declaration of functions you need.>
 <The actual implementation must be in functions.c>
@@ -38,4 +44,6 @@ double compute_norm(const double *r, int n);
 void free_csr_matrix(CSRMatrix *aMatrix);
 
 int compare(const void *a, const void *b); //this is for qsort
+
+int triangularcheck(const CSRMatrix AMatrix);
 #endif

@@ -20,10 +20,18 @@ int main(int argc, char *argv[])
 
     CSRMatrix aMatrix;
     ReadMMtoCSR(filename, &aMatrix);
+
+    
     puts("Matrix read successfully");
     // Initializing all the vector b (in Ax=b)
     double *bMatrix = (double *)malloc(aMatrix.num_cols * sizeof(double));
     double *xMatrix = (double *)malloc(aMatrix.num_cols * sizeof(double));
+    if (bMatrix == NULL || xMatrix == NULL)
+    {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
     // Set all elements of b to 1
     for (int i = 0; i < aMatrix.num_cols; ++i)
     {
@@ -35,7 +43,8 @@ int main(int argc, char *argv[])
         xMatrix[i] = 1.0;
     }
 
-    solver(aMatrix, bMatrix, xMatrix);
+    //solver(aMatrix, bMatrix, xMatrix);
+    puts("Solver finished");
     double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
     if (residual == NULL)
     {

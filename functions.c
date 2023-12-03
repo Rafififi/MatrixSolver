@@ -3,12 +3,7 @@
 #include <math.h>
 #include "functions.h"
 
-typedef struct
-{
-    int row;
-    int col;
-    double data;
-} MatrixElement;
+
 
 void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 {
@@ -43,8 +38,8 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
         c = getc(fileName);
     }
 
-
     printf("Numbers have been read\n");
+
 
     MatrixElement *elements = (MatrixElement *)calloc(aMatrix->num_non_zeros, sizeof(MatrixElement));
     if (elements == NULL)
@@ -52,6 +47,12 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
         printf("Memory allocation failed\n");
         exit(1);
     }
+    /*
+    for (int i = 0; i < aMatrix->num_non_zeros; i++)
+    {
+        printf("%d %d %lf\n", rows[i], cols[i], data[i]);
+    }
+    */
 
     for (int i = 0; i < aMatrix->num_non_zeros; i++)
     {
@@ -64,6 +65,7 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     qsort(elements, aMatrix->num_non_zeros, sizeof(MatrixElement), compare);
     //qsort is a built in function that sorts the array elements in ascending order
     printf("qsort done\n");
+
 
     aMatrix->row_ptr = (int *)calloc((aMatrix->num_rows + 1), sizeof(int));
     aMatrix->col_ind = (int *)calloc(aMatrix->num_non_zeros, sizeof(int));
@@ -100,16 +102,19 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
     }
     if (aMatrix->num_non_zeros < 50)
     {
+        printf("row_ptr: ");
         for (int i = 0; i <= aMatrix->num_rows; i++)
         {
             printf("%d ", aMatrix->row_ptr[i]);
         }
         printf("\n");
+        printf("col_ind: ");
         for (int i = 0; i < aMatrix->num_non_zeros; i++)
         {
             printf("%d ", aMatrix->col_ind[i]);
         }
         printf("\n");
+        printf("csr_data: ");
         for (int i = 0; i < aMatrix->num_non_zeros; i++)
         {
             printf("%lf ", aMatrix->csr_data[i]);
@@ -117,7 +122,6 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
         printf("\n");
     }
     
-
     free(rows);
     free(cols);
     free(data);
@@ -129,75 +133,97 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 
 void solver(const CSRMatrix AMatrix, double *b, double *x)
 {
-    int n = AMatrix.num_rows;
-    double *x_new = malloc(n * sizeof(double));
-    double tol = 1e-6;
-    int max_iter = 1000;
-
-    for (int i = 0; i < n; i++)
-    {
-        x_new[i] = x[i];
-    }
-
-    for (int iter = 0; iter < max_iter; iter++)
-    {
-        for (int i = 0; i < n; i++)
-        {
-            double sum = 0.0;
-            for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
-            {
-                if (AMatrix.col_ind[j] != i)
-                {
-                    sum += AMatrix.csr_data[j] * x[AMatrix.col_ind[j]];
-                }
-            }
-            x_new[i] = (b[i] - sum) / AMatrix.csr_data[AMatrix.row_ptr[i] + i];
-        }
-
-        double error = 0.0;
-        for (int i = 0; i < n; i++)
-        {
-            error += fabs(x_new[i] - x[i]);
-        }
-
-        if (error < tol)
-        {
-            break;
-        }
-
-        for (int i = 0; i < n; i++)
-        {
-            x[i] = x_new[i];
-        }
-    }
-
-    free(x_new);
-}
-
-
-void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
-{
-    double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
-
-    if (product == NULL)
+    double *diagonal = (double *)calloc(AMatrix.num_rows, sizeof(double));
+    int maxIterations = 1000;
+    if (diagonal == NULL)
     {
         printf("Memory allocation failed\n");
         exit(1);
     }
 
-    for (int row = 0; row < AMatrix->num_rows; row++)
+    for (int i = 0; i < AMatrix.num_rows; i++)
     {
-
-        for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row + 1]; j++)
+        for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
         {
-            product[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+            if (AMatrix.col_ind[j] == i)
+            {
+                diagonal[i] = AMatrix.csr_data[j];
+                if (diagonal[i] == 0)
+                {
+                    printf("The matrix is singular\n");
+                    exit(1);
+                }
+            }
         }
-        y[row] = product[row];
     }
-    
 
-    free(product);
-    printf("spmv done\n");
+    for (int i = 0; i < maxIterations; i++)
+    {
+        for (int j = 0; j < AMatrix.num_rows; j++)
+        {
+            double sum = 0;
+            for (int k = AMatrix.row_ptr[j]; k < AMatrix.row_ptr[j + 1]; k++)
+            {
+                if (AMatrix.col_ind[k] != j)
+                {
+                    sum += AMatrix.csr_data[k] * x[AMatrix.col_ind[k]];
+                }
+            }
+            x[j] = (b[j] - sum) / diagonal[j];
+        }
+    }
+
+    
+}
+
+
+void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
+{
+    int matrixType = triangularcheck(*AMatrix);
+    if (matrixType == 2)
+    {
+        //If the value is not on the diagonal I need to the x value that is equal to the col_index of the transpose of that value
+        double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
+        if (product == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(1);
+        }
+        printf("Product:");
+        for (int row = 0; row < AMatrix->num_rows; row++)
+        {
+            for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row + 1]; j++)
+            {
+                product[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+            }
+            y[row] = product[row];
+            printf(" %lf", y[row]);
+        }
+        free(product);
+    }
+
+    else
+    {
+        double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
+        if (product == NULL)
+        {
+            printf("Memory allocation failed\n");
+            exit(1);
+        }
+        printf("Product:");
+        for (int row = 0; row < AMatrix->num_rows; row++)
+        {
+
+            for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row + 1]; j++)
+            {
+                product[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+            }
+            y[row] = product[row];
+            printf(" %lf", y[row]);
+        }
+        free(product);
+    } 
+    printf("\nspmv done\n");
 }
 
 void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x, double *r)
@@ -259,3 +285,60 @@ int compare(const void *a, const void *b) //this is for qsort to sort the rows a
     //depending on whether the first argument is less than, equal to, or greater than the second argument.
 }
 
+int triangularcheck(const CSRMatrix AMatrix)
+{
+    int upper = 1;
+    for (int i = 0; i < AMatrix.num_rows; i++)
+    {
+        for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
+        {
+            if (AMatrix.col_ind[j] < i)
+            {
+                upper = 0;
+                break;
+            }
+        }
+        if (upper == 0)
+        {
+            break;
+        }
+    }
+    
+    int lower = 1;
+    for (int i = 0; i < AMatrix.num_rows; i++)
+    {
+        for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
+        {
+            if (AMatrix.col_ind[j] > i)
+            {
+                lower = 0;
+                break;
+            }
+        }
+        if (lower == 0)
+        {
+            break;
+        }
+    }
+
+    if (upper == 1 && lower == 1)
+    {
+        printf("The matrix not triangular\n");
+        return 0;
+    }
+    else if (upper == 1)
+    {
+        printf("The matrix is upper triangular\n");
+        return 1;
+    }
+    else if (lower == 1)
+    {
+        printf("The matrix is lower triangular\n");
+        return 2;
+    }
+    else
+    {
+        printf("The matrix is not triangular\n");
+        return 3;
+    }
+}
