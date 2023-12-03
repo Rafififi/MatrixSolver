@@ -16,12 +16,7 @@ int main(int argc, char *argv[])
     const char *filename = argv[1];
 
     //If the file is not in the directory
-    FILE *file = fopen(filename, "r");
-    if (file == NULL)
-    {
-        printf("File not found\n");
-        exit(1);
-    }
+    
 
     CSRMatrix aMatrix;
     ReadMMtoCSR(filename, &aMatrix);
@@ -40,20 +35,26 @@ int main(int argc, char *argv[])
         xMatrix[i] = 1.0;
     }
 
-    //solver(aMatrix, bMatrix, xMatrix);
-    double *r = (double *)malloc(aMatrix.num_cols * sizeof(double));
-    compute_residual(aMatrix, bMatrix, xMatrix, r);
-    double norm = compute_norm(r, aMatrix.num_cols);
+    solver(aMatrix, bMatrix, xMatrix);
+    double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
+    if (residual == NULL)
+    {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
+    compute_residual(aMatrix, bMatrix, xMatrix, residual);
+    double norm = compute_norm(residual, aMatrix.num_cols);
     printf(" \nNorm: %lf\n", norm);
     // <The rest of your code goes here>
     free_csr_matrix(&aMatrix);
 
     free(bMatrix);
     free(xMatrix);
-    free(r);
+    free(residual);
     bMatrix = NULL;
     xMatrix = NULL;
-    r = NULL;
+    residual = NULL;
 
     printf("\nDone!\n");
     return 0;

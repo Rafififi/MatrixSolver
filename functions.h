@@ -36,4 +36,6 @@ void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x,
 double compute_norm(const double *r, int n);
 
 void free_csr_matrix(CSRMatrix *aMatrix);
+
+int compare(const void *a, const void *b); //this is for qsort
 #endif

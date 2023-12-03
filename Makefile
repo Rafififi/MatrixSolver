@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -ggdb3
+CFLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -ggdb3 -Ofast
 LDFLAGS = -lm
 SRC = main.c functions.c
 OBJ = $(SRC:.c=.o)

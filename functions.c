@@ -3,10 +3,22 @@
 #include <math.h>
 #include "functions.h"
 
+typedef struct
+{
+    int row;
+    int col;
+    double data;
+} MatrixElement;
 
 void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 {
     FILE *fileName = fopen(filename, "r");
+    if (fileName == NULL)
+    {
+        printf("File not found\n");
+        exit(1);
+    }
+
     fscanf(fileName, "%*[^\n]\n"); // Skip the first line
     //skip lines that start with a %
     char c = getc(fileName);
@@ -34,44 +46,83 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 
     printf("Numbers have been read\n");
 
+    MatrixElement *elements = (MatrixElement *)calloc(aMatrix->num_non_zeros, sizeof(MatrixElement));
+    if (elements == NULL)
+    {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < aMatrix->num_non_zeros; i++)
+    {
+        elements[i].row = rows[i];
+        elements[i].col = cols[i];
+        elements[i].data = data[i];
+    }
+
+    //using qsort to sort the rows and applying the same permutation to cols and data
+    qsort(elements, aMatrix->num_non_zeros, sizeof(MatrixElement), compare);
+    //qsort is a built in function that sorts the array elements in ascending order
+    printf("qsort done\n");
 
     aMatrix->row_ptr = (int *)calloc((aMatrix->num_rows + 1), sizeof(int));
     aMatrix->col_ind = (int *)calloc(aMatrix->num_non_zeros, sizeof(int));
     aMatrix->csr_data = (double *)calloc(aMatrix->num_non_zeros, sizeof(double));
 
-    int value = 0;
-    int col = 0;
-    for (int row = 0; row <= aMatrix->num_rows; row++)
+    if (aMatrix->row_ptr == NULL || aMatrix->col_ind == NULL || aMatrix->csr_data == NULL)
     {
-        for (int i = 0; i < aMatrix->num_non_zeros; i++)
-        {
-            if (rows[i] == row)
-            {
-                value++;
-                aMatrix->row_ptr[row] = value;
-                aMatrix->col_ind[col] = cols[i] - 1;
-                aMatrix->csr_data[col] = data[i];
-                col++;
-            }
-        }
+        printf("Memory allocation failed\n");
+        exit(1);
     }
 
-    for (int i = 0; i <= aMatrix->num_rows; i++)
-    {
-        printf("%d ", aMatrix->row_ptr[i]);
-    }
-    printf("\n");
+    int current_row = 0;
+    int value = 0;
+    int col = 0;
+
     for (int i = 0; i < aMatrix->num_non_zeros; i++)
     {
-        printf("col index: %d ", aMatrix->col_ind[i]);
-        printf("csr Data: %lf ", aMatrix->csr_data[i]);
+        while (current_row < elements[i].row && current_row <= aMatrix->num_rows)
+        {
+            aMatrix->row_ptr[current_row] = value;
+            current_row++;
+        }
+        value++;
+        aMatrix->col_ind[col] = elements[i].col - 1;
+        aMatrix->csr_data[col] = elements[i].data;
+        col++;
+    }
+
+    // Fill the rest of row_ptr with the total number of non-zero elements
+    while (current_row <= aMatrix->num_rows)
+    {
+        aMatrix->row_ptr[current_row] = value;
+        current_row++;
+    }
+    if (aMatrix->num_non_zeros < 50)
+    {
+        for (int i = 0; i <= aMatrix->num_rows; i++)
+        {
+            printf("%d ", aMatrix->row_ptr[i]);
+        }
+        printf("\n");
+        for (int i = 0; i < aMatrix->num_non_zeros; i++)
+        {
+            printf("%d ", aMatrix->col_ind[i]);
+        }
+        printf("\n");
+        for (int i = 0; i < aMatrix->num_non_zeros; i++)
+        {
+            printf("%lf ", aMatrix->csr_data[i]);
+        }
         printf("\n");
     }
     
+
     free(rows);
     free(cols);
     free(data);
-    
+    free(elements);
+    elements = NULL;
     fclose(fileName);
 
 }
@@ -127,6 +178,13 @@ void solver(const CSRMatrix AMatrix, double *b, double *x)
 void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
 {
     double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
+
+    if (product == NULL)
+    {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
     for (int row = 0; row < AMatrix->num_rows; row++)
     {
 
@@ -145,7 +203,15 @@ void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
 void compute_residual(const CSRMatrix AMatrix, const double *b, const double *x, double *r)
 {
     double *product = (double *)calloc(AMatrix.num_non_zeros, sizeof(double));
+
+    if (product == NULL)
+    {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
     spmv_csr(&AMatrix, x, product);
+
+
 
     for (int i = 0; i < AMatrix.num_rows; i++)
     {
@@ -183,3 +249,13 @@ void free_csr_matrix(CSRMatrix *aMatrix)
     aMatrix->num_non_zeros = 0;
     printf("free done\n");
 }
+
+int compare(const void *a, const void *b) //this is for qsort to sort the rows and applying the same permutation to cols and data
+{
+    MatrixElement *elementA = (MatrixElement *)a;
+    MatrixElement *elementB = (MatrixElement *)b;
+    return elementA->row - elementB->row;
+    //It works by returning a negative, zero, or positive integer, 
+    //depending on whether the first argument is less than, equal to, or greater than the second argument.
+}
+
