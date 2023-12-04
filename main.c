@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 #include "functions.h"
 
 int main(int argc, char *argv[])
@@ -14,14 +15,45 @@ int main(int argc, char *argv[])
     }
     // <Handle the inputs here>
     const char *filename = argv[1];
-
     //If the file is not in the directory
     
 
     CSRMatrix aMatrix;
     ReadMMtoCSR(filename, &aMatrix);
 
-    
+    // precompute A^T
+    CSRMatrix *nonConsantMatrix = (CSRMatrix *)malloc(sizeof(CSRMatrix));
+
+    // check if memory allocation was successful
+    if (nonConsantMatrix == NULL)
+    {
+        printf("Error: memory allocation failed\n");
+        exit(1);
+    }
+
+    // copy A over to A^T
+    nonConsantMatrix->num_rows = aMatrix.num_rows;
+    nonConsantMatrix->num_cols = aMatrix.num_cols;
+    nonConsantMatrix->num_non_zeros = aMatrix.num_non_zeros;
+
+    nonConsantMatrix->csr_data = (double *)malloc(nonConsantMatrix->num_non_zeros * sizeof(double));
+    nonConsantMatrix->col_ind = (int *)malloc(nonConsantMatrix->num_non_zeros * sizeof(int));
+    nonConsantMatrix->row_ptr = (int *)malloc((nonConsantMatrix->num_rows + 1) * sizeof(int));
+
+    // check if memory allocation was successful
+    if (nonConsantMatrix->csr_data == NULL || nonConsantMatrix->col_ind == NULL || nonConsantMatrix->row_ptr == NULL)
+    {
+        printf("Error: memory allocation failed\n");
+        exit(1);
+    }
+
+    // now copy over the data
+    memcpy(nonConsantMatrix->csr_data, aMatrix.csr_data, nonConsantMatrix->num_non_zeros * sizeof(double));
+    memcpy(nonConsantMatrix->col_ind, aMatrix.col_ind, nonConsantMatrix->num_non_zeros * sizeof(int));
+    memcpy(nonConsantMatrix->row_ptr, aMatrix.row_ptr, (nonConsantMatrix->num_rows + 1) * sizeof(int));
+
+    CSRTranspose(nonConsantMatrix);
+
     puts("Matrix read successfully");
     // Initializing all the vector b (in Ax=b)
     double *bMatrix = (double *)malloc(aMatrix.num_cols * sizeof(double));
@@ -42,12 +74,19 @@ int main(int argc, char *argv[])
     {
         xMatrix[i] = 1.0;
     }
-
-
+    triangularCheck(aMatrix);
    
 
-    //solver(aMatrix, bMatrix, xMatrix);
+    solver(aMatrix, bMatrix, xMatrix, *nonConsantMatrix);
     puts("Solver finished");
+
+    printf("XMatix: \n");
+    for (int i = 0; i < aMatrix.num_cols; ++i)
+    {
+        printf("%f \n", xMatrix[i]);
+    }
+    
+
     double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
     if (residual == NULL)
     {
@@ -55,11 +94,20 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    computeResidual(aMatrix, bMatrix, xMatrix, residual);
+    computeResidual(aMatrix, bMatrix, xMatrix, residual, *nonConsantMatrix);
+    for (int i = 0; i < aMatrix.num_cols; ++i)
+    {
+        printf("%e \n", residual[i]);
+    }
+
+    
     double norm = computeNorm(residual, aMatrix.num_cols);
     printf(" \nNorm: %e\n", norm);
     // <The rest of your code goes here>
     freeCSRMatrix(&aMatrix);
+    freeCSRMatrix(nonConsantMatrix);
+    free(nonConsantMatrix);
+
 
     free(bMatrix);
     free(xMatrix);

@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <strings.h>
 #include "functions.h"
 
-
+char matrixType = ' ';
 
 void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 {
@@ -100,38 +101,21 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
         aMatrix->row_ptr[current_row] = value;
         current_row++;
     }
-    if (aMatrix->num_non_zeros < 50)
-    {
-        printf("row_ptr: ");
-        for (int i = 0; i <= aMatrix->num_rows; i++)
-        {
-            printf("%d ", aMatrix->row_ptr[i]);
-        }
-        printf("\n");
-        printf("col_ind: ");
-        for (int i = 0; i < aMatrix->num_non_zeros; i++)
-        {
-            printf("%d ", aMatrix->col_ind[i]);
-        }
-        printf("\n");
-        printf("csr_data: ");
-        for (int i = 0; i < aMatrix->num_non_zeros; i++)
-        {
-            printf("%lf ", aMatrix->csr_data[i]);
-        }
-        printf("\n");
-    }
+    
     
     free(rows);
     free(cols);
     free(data);
     free(elements);
     elements = NULL;
+    rows = NULL;
+    cols = NULL;
+    data = NULL;
     fclose(fileName);
 
 }
 
-void solver(const CSRMatrix AMatrix, double *b, double *x)
+void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonConsantMatrix)
 {
     double *diagonal = (double *)calloc(AMatrix.num_rows, sizeof(double));
     int maxIterations = 1000;
@@ -151,11 +135,45 @@ void solver(const CSRMatrix AMatrix, double *b, double *x)
                 if (diagonal[i] == 0)
                 {
                     printf("The matrix is singular\n");
+                    free(diagonal);
                     exit(1);
                 }
             }
         }
     }
+
+    if (matrixType == 'L')
+    {
+        for (int iteration = 0; iteration < maxIterations; iteration++)
+        {
+            for (int j = 0; j < AMatrix.num_rows; j++)
+            {
+                double sum = 0.0;
+                for (int k = AMatrix.row_ptr[j]; k < AMatrix.row_ptr[j + 1]; k++)
+                {
+                    if (AMatrix.col_ind[k] != j)
+                    {
+                        sum += AMatrix.csr_data[k] * x[AMatrix.col_ind[k]];
+                    }
+                }
+                
+                for (int k = nonConsantMatrix.row_ptr[j]; k < nonConsantMatrix.row_ptr[j + 1]; k++)
+                {
+                    if (nonConsantMatrix.col_ind[k] != j)
+                    {
+                        sum += nonConsantMatrix.csr_data[k] * x[nonConsantMatrix.col_ind[k]];
+                    }
+                }
+
+                x[j] = (b[j] - sum) / diagonal[j];
+            }
+        }
+        free(diagonal);
+        diagonal = NULL;
+        return;
+    }
+
+    
 
     for (int i = 0; i < maxIterations; i++)
     {
@@ -178,45 +196,66 @@ void solver(const CSRMatrix AMatrix, double *b, double *x)
 }
 
 
-void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
+void spmvCSR(const CSRMatrix *AMatrix, const double *x, double *y, const CSRMatrix *nonConsantMatrix)
 {
-    int matrixType = triangularcheck(*AMatrix);
-    if (matrixType == 2)
+    if (matrixType == 'L')
     {
+        for (int row = 0; row < AMatrix->num_rows; row++)
+        {
+            y[row] = 0;
+        }
         double *product = (double *)calloc(AMatrix->num_non_zeros, sizeof(double));
         for (int row = 0; row < AMatrix->num_rows; row++)
         {
 
             for (int j = AMatrix->row_ptr[row]; j < AMatrix->row_ptr[row + 1]; j++)
             {
-                y[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+                if (AMatrix->col_ind[j] != row)
+                {
+                    product[row] = AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+                }
+                y[row] += product[row];
             }
             
             // printf(" %lf", y[row]);
         }
 
+
+
         printf("\n");
-        CSRMatrix nonConsantMatrix = *AMatrix;
-        CSRTranspose(&nonConsantMatrix);
-
-
-
-        for (int row = 0; row < nonConsantMatrix.num_rows; row++)
+        for (int row = 0; row < nonConsantMatrix->num_rows; row++)
         {
-            for (int j = nonConsantMatrix.row_ptr[row]; j < nonConsantMatrix.row_ptr[row + 1]; j++)
+            for (int j = nonConsantMatrix->row_ptr[row]; j < nonConsantMatrix->row_ptr[row + 1]; j++)
             {
-                if (nonConsantMatrix.col_ind[j] != row)
+                if (nonConsantMatrix->col_ind[j] != row)
                 {
-                    y[row] += nonConsantMatrix.csr_data[j] * x[nonConsantMatrix.col_ind[j]];
+                    product[row] = nonConsantMatrix->csr_data[j] * x[nonConsantMatrix->col_ind[j]];
                 }
+                else
+                {
+                    product[row] = 0;
+                }
+                y[row] += product[row];
             }
         }
-        printf("Product:");
-        for (int row = 0; row < AMatrix->num_rows; row++)
+
+        for (int row = 0; row < nonConsantMatrix->num_rows; row++) 
         {
-            printf(" %lf", y[row]);
+            for (int j = nonConsantMatrix->row_ptr[row]; j < nonConsantMatrix->row_ptr[row + 1]; j++)
+            {
+                if (nonConsantMatrix->col_ind[j] == row)
+                {
+                    product[row] = nonConsantMatrix->csr_data[j] * x[nonConsantMatrix->col_ind[j]];
+                }
+                else 
+                {
+                    product[row] = 0;
+                }
+                y[row] += product[row];
+
+            }
         }
-        
+
         free(product);
     }
 
@@ -237,14 +276,14 @@ void spmv_csr(const CSRMatrix *AMatrix, const double *x, double *y)
                 product[row] += AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
             }
             y[row] = product[row];
-            //printf(" %lf", y[row]);
+            printf(" %lf", y[row]);
         }
         free(product);
     } 
     printf("\nspmv done\n");
 }
 
-void computeResidual(const CSRMatrix AMatrix, const double *b, const double *x, double *r)
+void computeResidual(const CSRMatrix AMatrix, const double *b, const double *x, double *r, const CSRMatrix nonConsantMatrix)
 {
     double *product = (double *)calloc(AMatrix.num_non_zeros, sizeof(double));
 
@@ -253,9 +292,7 @@ void computeResidual(const CSRMatrix AMatrix, const double *b, const double *x, 
         printf("Memory allocation failed\n");
         exit(1);
     }
-    spmv_csr(&AMatrix, x, product);
-
-
+    spmvCSR(&AMatrix, x, product, &nonConsantMatrix);
 
     for (int i = 0; i < AMatrix.num_rows; i++)
     {
@@ -303,7 +340,7 @@ int compare(const void *a, const void *b) //this is for qsort to sort the rows a
     //depending on whether the first argument is less than, equal to, or greater than the second argument.
 }
 
-int triangularcheck(const CSRMatrix AMatrix)
+void triangularCheck(const CSRMatrix AMatrix)
 {
     int upper = 1;
     for (int i = 0; i < AMatrix.num_rows; i++)
@@ -342,23 +379,20 @@ int triangularcheck(const CSRMatrix AMatrix)
     if (upper == 1 && lower == 1)
     {
         printf("The matrix not triangular\n");
-        return 0;
+        matrixType = 'N';
     }
     else if (upper == 1)
     {
         printf("The matrix is upper triangular\n");
-        return 1;
+        matrixType = 'U';
+        
     }
     else if (lower == 1)
     {
         printf("The matrix is lower triangular\n");
-        return 2;
+        matrixType = 'L';
     }
-    else
-    {
-        printf("The matrix is not triangular\n");
-        return 3;
-    }
+    
 }
 
 void CSRTranspose(CSRMatrix *aMatrix)
@@ -386,6 +420,7 @@ void CSRTranspose(CSRMatrix *aMatrix)
             index++;
         }
     }
+    
 
     // sort the temporary array by row
     qsort(elements, aMatrix->num_non_zeros, sizeof(MatrixElement), compare);
@@ -421,23 +456,74 @@ void CSRTranspose(CSRMatrix *aMatrix)
 
     aMatrix->row_ptr[0] = 0;
 
-    for (int j = 0; j <= aMatrix->num_rows; j++)
-    {
-        printf("%d ", aMatrix->row_ptr[j]);
-    }
-    printf("\n");
-
-    for (int j = 0; j < aMatrix->num_non_zeros; j++)
-    {
-        printf("%d ", aMatrix->col_ind[j]);
-    }
-    printf("\n");
-
-    for (int j = 0; j < aMatrix->num_non_zeros; j++)
-    {
-        printf("%lf ", aMatrix->csr_data[j]);
-    }
-    printf("\n");
     // free the temporary array
     free(elements);
+}
+
+void CSR_pretty_print(const CSRMatrix *A)
+{
+    printf("Pretty print of CSRMatrix:\n");
+    printf("\t- Number of rows: %d\n", A->num_rows);
+    printf("\t- Number of columns: %d\n", A->num_cols);
+    printf("\t- Number of non-zero elements: %d\n", A->num_non_zeros);
+
+    // calculate max element width
+    int max_width = 0;
+    for (int i = 0; i < A->num_non_zeros; i++)
+    {
+        int element_width = snprintf(NULL, 0, "%lf", A->csr_data[i]);
+        if (element_width > max_width)
+        {
+            max_width = element_width;
+        }
+    }
+
+    // calculate spacing on left side of matrix based on rows
+    int max_row_width = snprintf(NULL, 0, "%d", A->num_rows);
+    int left_spacing = max_row_width + 3;
+
+    // print column indices
+    printf("%*s", left_spacing, "");
+    for (int i = 0; i < A->num_cols; i++)
+    {
+        printf("%*d", max_width + 1, i);
+    }
+    printf("\n");
+
+    // print top border
+    printf("%*s", left_spacing, "+-");
+    for (int i = 0; i < A->num_cols; i++)
+    {
+        for (int j = 0; j < max_width + 1; j++)
+        {
+            printf("-");
+        }
+    }
+    printf("\n");
+
+    // print matrix including zeros
+    
+    for (int i = 0; i < A->num_rows; i++)
+    {
+        printf("%*d |", max_row_width, i);
+        for (int j = 0; j < A->num_cols; j++)
+        {
+            int found = 0;
+            for (int k = A->row_ptr[i]; k < A->row_ptr[i + 1]; k++)
+            {
+                if (A->col_ind[k] == j)
+                {
+                    printf("%*lf", max_width + 1, A->csr_data[k]);
+                    found = 1;
+                    break;
+                }
+            }
+            if (found == 0)
+            {
+                printf("%*d", max_width + 1, 0);
+            }
+        }
+        printf("\n");
+    }
+    printf("\n");
 }
