@@ -21,8 +21,7 @@ int main(int argc, char *argv[])
     CSRMatrix aMatrix;
     ReadMMtoCSR(filename, &aMatrix);
 
-    // precompute A^T
-    CSRMatrix *nonConsantMatrix = (CSRMatrix *)malloc(sizeof(CSRMatrix));
+    CSRMatrix *nonConsantMatrix = (CSRMatrix *)malloc(sizeof(CSRMatrix)); // allocate memory for the matrix
 
     // check if memory allocation was successful
     if (nonConsantMatrix == NULL)
@@ -31,26 +30,24 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // copy A over to A^T
     nonConsantMatrix->num_rows = aMatrix.num_rows;
     nonConsantMatrix->num_cols = aMatrix.num_cols;
     nonConsantMatrix->num_non_zeros = aMatrix.num_non_zeros;
-
+    // allocate memory for the matrix
     nonConsantMatrix->csr_data = (double *)malloc(nonConsantMatrix->num_non_zeros * sizeof(double));
     nonConsantMatrix->col_ind = (int *)malloc(nonConsantMatrix->num_non_zeros * sizeof(int));
     nonConsantMatrix->row_ptr = (int *)malloc((nonConsantMatrix->num_rows + 1) * sizeof(int));
-
-    // check if memory allocation was successful
+    
     if (nonConsantMatrix->csr_data == NULL || nonConsantMatrix->col_ind == NULL || nonConsantMatrix->row_ptr == NULL)
     {
         printf("Error: memory allocation failed\n");
         exit(1);
     }
 
-    // now copy over the data
     memcpy(nonConsantMatrix->csr_data, aMatrix.csr_data, nonConsantMatrix->num_non_zeros * sizeof(double));
     memcpy(nonConsantMatrix->col_ind, aMatrix.col_ind, nonConsantMatrix->num_non_zeros * sizeof(int));
     memcpy(nonConsantMatrix->row_ptr, aMatrix.row_ptr, (nonConsantMatrix->num_rows + 1) * sizeof(int));
+    // we need to copy as if we don't then the original matrix will be changed
 
     CSRTranspose(nonConsantMatrix);
 
@@ -81,10 +78,7 @@ int main(int argc, char *argv[])
     puts("Solver finished");
 
     printf("XMatix: \n");
-    for (int i = 0; i < aMatrix.num_cols; ++i)
-    {
-        printf("%f \n", xMatrix[i]);
-    }
+    
     
 
     double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
@@ -95,10 +89,7 @@ int main(int argc, char *argv[])
     }
 
     computeResidual(aMatrix, bMatrix, xMatrix, residual, *nonConsantMatrix);
-    for (int i = 0; i < aMatrix.num_cols; ++i)
-    {
-        printf("%e \n", residual[i]);
-    }
+    
 
     
     double norm = computeNorm(residual, aMatrix.num_cols);

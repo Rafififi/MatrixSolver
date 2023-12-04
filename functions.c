@@ -27,6 +27,10 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 
     // Read the number of rows, columns and non-zero elements
     fscanf(fileName, "%d %d %d", &aMatrix->num_rows, &aMatrix->num_cols, &aMatrix->num_non_zeros);
+
+    printf("Number of rows: %d\n", aMatrix->num_rows);
+    printf("Number of columns: %d\n", aMatrix->num_cols);
+    printf("Number of non-zero elements: %d\n", aMatrix->num_non_zeros);
     
     
 
@@ -118,14 +122,14 @@ void ReadMMtoCSR(const char *filename, CSRMatrix *aMatrix)
 void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonConsantMatrix)
 {
     double *diagonal = (double *)calloc(AMatrix.num_rows, sizeof(double));
-    int maxIterations = 1000;
+    int maxIterations = 100000;
     if (diagonal == NULL)
     {
         printf("Memory allocation failed\n");
         exit(1);
     }
 
-    for (int i = 0; i < AMatrix.num_rows; i++)
+    for (int i = 0; i < AMatrix.num_rows; i++) // Find the diagonal elements
     {
         for (int j = AMatrix.row_ptr[i]; j < AMatrix.row_ptr[i + 1]; j++)
         {
@@ -144,16 +148,16 @@ void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonCo
 
     if (matrixType == 'L')
     {
-        for (int iteration = 0; iteration < maxIterations; iteration++)
+        for (int iteration = 0; iteration < maxIterations; iteration++) // Go through the iterations
         {
-            for (int j = 0; j < AMatrix.num_rows; j++)
+            for (int j = 0; j < AMatrix.num_rows; j++) // Go through the rows
             {
                 double sum = 0.0;
-                for (int k = AMatrix.row_ptr[j]; k < AMatrix.row_ptr[j + 1]; k++)
+                for (int k = AMatrix.row_ptr[j]; k < AMatrix.row_ptr[j + 1]; k++) // go up to value of the next row pointer
                 {
                     if (AMatrix.col_ind[k] != j)
                     {
-                        sum += AMatrix.csr_data[k] * x[AMatrix.col_ind[k]];
+                        sum += AMatrix.csr_data[k] * x[AMatrix.col_ind[k]]; // find the A*x for the non diagonal elements and the 
                     }
                 }
                 
@@ -161,7 +165,7 @@ void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonCo
                 {
                     if (nonConsantMatrix.col_ind[k] != j)
                     {
-                        sum += nonConsantMatrix.csr_data[k] * x[nonConsantMatrix.col_ind[k]];
+                        sum += nonConsantMatrix.csr_data[k] * x[nonConsantMatrix.col_ind[k]]; //find the AT*x for the non diagonal elements
                     }
                 }
 
@@ -171,6 +175,7 @@ void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonCo
         free(diagonal);
         diagonal = NULL;
         return;
+        
     }
 
     
@@ -213,8 +218,8 @@ void spmvCSR(const CSRMatrix *AMatrix, const double *x, double *y, const CSRMatr
                 if (AMatrix->col_ind[j] != row)
                 {
                     product[row] = AMatrix->csr_data[j] * x[AMatrix->col_ind[j]];
+                    y[row] += product[row];
                 }
-                y[row] += product[row];
             }
             
             // printf(" %lf", y[row]);
@@ -230,12 +235,12 @@ void spmvCSR(const CSRMatrix *AMatrix, const double *x, double *y, const CSRMatr
                 if (nonConsantMatrix->col_ind[j] != row)
                 {
                     product[row] = nonConsantMatrix->csr_data[j] * x[nonConsantMatrix->col_ind[j]];
+                    y[row] += product[row];
                 }
                 else
                 {
                     product[row] = 0;
                 }
-                y[row] += product[row];
             }
         }
 
@@ -246,13 +251,12 @@ void spmvCSR(const CSRMatrix *AMatrix, const double *x, double *y, const CSRMatr
                 if (nonConsantMatrix->col_ind[j] == row)
                 {
                     product[row] = nonConsantMatrix->csr_data[j] * x[nonConsantMatrix->col_ind[j]];
+                    y[row] += product[row];
                 }
                 else 
                 {
                     product[row] = 0;
                 }
-                y[row] += product[row];
-
             }
         }
 

@@ -1,52 +1,19 @@
+Number of rows: 69999
+Number of columns: 69999
+Number of non-zero elements: 154313
 Numbers have been read
 qsort done
 Matrix read successfully
 The matrix is lower triangular
 Solver finished
 XMatix: 
-12.769168 
-0.135146 
-11.544192 
-0.249708 
-9.105697 
-0.331497 
-5.707931 
-0.371896 
-1.731857 
-0.367026 
--2.359405 
-0.318361 
--6.074983 
-0.232713 
--8.953946 
-0.121589 
--10.619314 
--10.821881 
 
 
 spmv done
 residual done
-4.809530e-02 
--6.073939e+03 
-2.268057e+01 
--5.479423e+03 
-2.056816e+01 
--4.309372e+03 
-1.629101e+01 
--2.685882e+03 
-1.029456e+01 
--7.909945e+02 
-3.251104e+00 
-1.154594e+03 
--4.018857e+00 
-2.917461e+03 
--1.064302e+01 
-4.278884e+03 
--1.579982e+01 
--1.876688e+01 
 norm done
  
-Norm: 1.102192e+04
+Norm: -nan
 free done
 free done
 
