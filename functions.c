@@ -127,7 +127,7 @@ void solver(const CSRMatrix AMatrix, double *b, double *x, const CSRMatrix nonCo
     double *diagonal = (double *)calloc(AMatrix.num_rows, sizeof(double));
 
     //The larger the file the larger the amount of itterations needed to get a good approximation
-    int maxIterations = 10000;
+    int maxIterations = 1000;
 
     printf("Generations: %d\n", maxIterations);
 
