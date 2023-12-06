@@ -21,7 +21,7 @@ typedef struct
     int row;
     int col;
     double data;
-} MatrixElement;
+} TemporaryElement;
 // ###########################################################
 /* <Here you can add the declaration of functions you need.>
 <The actual implementation must be in functions.c>
@@ -45,9 +45,9 @@ void freeCSRMatrix(CSRMatrix *aMatrix);
 
 int compare(const void *a, const void *b); //this is for qsort
 
-void triangularCheck(const CSRMatrix AMatrix);
+char triangularCheck(const CSRMatrix AMatrix, CSRMatrix *nonConstantMatrix);
 
 void CSRTranspose(CSRMatrix *aMatrix);
 
-void CSR_pretty_print(const CSRMatrix *A);
+void CreateNonConstantMatrix(const CSRMatrix aMatrix, CSRMatrix *nonConsantMatrix);
 #endif

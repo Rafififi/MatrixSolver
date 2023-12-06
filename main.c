@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <time.h>
 #include <string.h>
 #include "functions.h"
 
@@ -16,40 +17,13 @@ int main(int argc, char *argv[])
     // <Handle the inputs here>
     const char *filename = argv[1];
     //If the file is not in the directory
-    
+    clock_t start, midpoint1, midpoint2, end;
+    double cpu_time_used;
+    start = clock();
+
 
     CSRMatrix aMatrix;
     ReadMMtoCSR(filename, &aMatrix);
-
-    CSRMatrix *nonConsantMatrix = (CSRMatrix *)malloc(sizeof(CSRMatrix)); // allocate memory for the matrix
-
-    // check if memory allocation was successful
-    if (nonConsantMatrix == NULL)
-    {
-        printf("Error: memory allocation failed\n");
-        exit(1);
-    }
-
-    nonConsantMatrix->num_rows = aMatrix.num_rows;
-    nonConsantMatrix->num_cols = aMatrix.num_cols;
-    nonConsantMatrix->num_non_zeros = aMatrix.num_non_zeros;
-    // allocate memory for the matrix
-    nonConsantMatrix->csr_data = (double *)malloc(nonConsantMatrix->num_non_zeros * sizeof(double));
-    nonConsantMatrix->col_ind = (int *)malloc(nonConsantMatrix->num_non_zeros * sizeof(int));
-    nonConsantMatrix->row_ptr = (int *)malloc((nonConsantMatrix->num_rows + 1) * sizeof(int));
-    
-    if (nonConsantMatrix->csr_data == NULL || nonConsantMatrix->col_ind == NULL || nonConsantMatrix->row_ptr == NULL)
-    {
-        printf("Error: memory allocation failed\n");
-        exit(1);
-    }
-
-    memcpy(nonConsantMatrix->csr_data, aMatrix.csr_data, nonConsantMatrix->num_non_zeros * sizeof(double));
-    memcpy(nonConsantMatrix->col_ind, aMatrix.col_ind, nonConsantMatrix->num_non_zeros * sizeof(int));
-    memcpy(nonConsantMatrix->row_ptr, aMatrix.row_ptr, (nonConsantMatrix->num_rows + 1) * sizeof(int));
-    // we need to copy as if we don't then the original matrix will be changed
-
-    CSRTranspose(nonConsantMatrix);
 
     puts("Matrix read successfully");
     // Initializing all the vector b (in Ax=b)
@@ -71,16 +45,33 @@ int main(int argc, char *argv[])
     {
         xMatrix[i] = 1.0;
     }
-    triangularCheck(aMatrix);
-   
 
-    solver(aMatrix, bMatrix, xMatrix, *nonConsantMatrix);
+    CSRMatrix *aMatrixTranspose = (CSRMatrix *)malloc(sizeof(CSRMatrix)); // allocate memory for the matrix that will store the transpose of the original matrix
+
+    // check if memory allocation was successful
+    if (aMatrixTranspose == NULL)
+    {
+        printf("Error: memory allocation failed\n");
+        exit(1);
+    }
+
+    char matrixType = triangularCheck(aMatrix, aMatrixTranspose);
+
+
+   
+    midpoint1 = clock(); // start timing the solver
+    solver(aMatrix, bMatrix, xMatrix, *aMatrixTranspose);
+    midpoint2 = clock(); // end timing the solver
     puts("Solver finished");
 
-    printf("XMatix: \n");
+    if (aMatrix.num_non_zeros < 51)
+    {
+        for (int i = 0; i < aMatrix.num_cols; ++i)
+        {
+            printf("%e\n", xMatrix[i]);
+        }
+    }
     
-    
-
     double *residual = (double *)malloc(aMatrix.num_cols * sizeof(double));
     if (residual == NULL)
     {
@@ -88,18 +79,19 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    computeResidual(aMatrix, bMatrix, xMatrix, residual, *nonConsantMatrix);
+    computeResidual(aMatrix, bMatrix, xMatrix, residual, *aMatrixTranspose);
     
 
     
     double norm = computeNorm(residual, aMatrix.num_cols);
-    printf(" \nNorm: %e\n", norm);
+    printf("Norm: %e\n", norm);
     // <The rest of your code goes here>
     freeCSRMatrix(&aMatrix);
-    freeCSRMatrix(nonConsantMatrix);
-    free(nonConsantMatrix);
-
-
+    if (matrixType == 'L')
+    {
+        freeCSRMatrix(aMatrixTranspose);
+    }
+    free(aMatrixTranspose);
     free(bMatrix);
     free(xMatrix);
     free(residual);
@@ -107,6 +99,10 @@ int main(int argc, char *argv[])
     xMatrix = NULL;
     residual = NULL;
 
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Time taken to run the program: %f\n", cpu_time_used);
+    printf("Time taken to solve the matrix: %f\n", ((double)(midpoint2 - midpoint1)) / CLOCKS_PER_SEC);
     printf("\nDone!\n");
     return 0;
 }
