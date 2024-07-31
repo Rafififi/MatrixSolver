@@ -50,4 +50,7 @@ char triangularCheck(const CSRMatrix AMatrix, CSRMatrix *nonConstantMatrix);
 void CSRTranspose(CSRMatrix *aMatrix);
 
 void CreateNonConstantMatrix(const CSRMatrix aMatrix, CSRMatrix *nonConsantMatrix);
+
+void bail();
+
 #endif
